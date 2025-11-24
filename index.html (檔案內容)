@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>國際教育補助計畫－經費記帳 App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#ffb400">
+
+  <!-- iPhone PWA 必要 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="國際教育記帳">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", sans-serif;
+      margin: 0;
+      background: #f5f5f5;
+    }
+
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+      background: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .tabs {
+      display: flex;
+      background: #333;
+      color: #fff;
+      font-size: 15px;
+    }
+
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 10px 0;
+      opacity: 0.6;
+    }
+
+    .tab.active {
+      color: #ffb400;
+      border-bottom: 3px solid #ffb400;
+      opacity: 1;
+    }
+
+    .content {
+      padding: 16px;
+      flex: 1;
+    }
+
+    .field {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .field label {
+      width: 80px;
+      font-weight: 600;
+      color: #555;
+      flex-shrink: 0;
+    }
+
+    .field input[type="text"],
+    .field input[type="number"],
+    .field input[type="date"],
+    .field select,
+    .field textarea {
+      flex: 1;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+
+    .field textarea {
+      resize: vertical;
+      min-height: 40px;
+    }
+
+    .field input[type="number"] {
+      text-align: right;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    button {
+      flex: 1;
+      padding: 10px;
+      font-size: 15px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: #ffb400;
+    }
+
+    .btn-secondary {
+      background: #e0e0e0;
+    }
+
+    .btn-export {
+      background: #4caf50;
+      color: #fff;
+      margin-top: 8px;
+    }
+
+    h2 {
+      font-size: 18px;
+      margin: 16px 0 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 4px 6px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      background: #faf0d0;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .empty-hint {
+      font-size: 13px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    @media (max-width: 480px) {
+      .field label {
+        width: 70px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <div class="tabs">
+      <div class="tab">常用</div>
+      <div class="tab active">支出</div>
+      <div class="tab">收入</div>
+      <div class="tab">轉帳</div>
+    </div>
+
+    <div class="content">
+      <h2>新增支出</h2>
+      <form id="expenseForm">
+
+        <div class="field"><label>金額：</label>
+          <input type="number" id="amount" min="0" step="1" required placeholder="請輸入金額"></div>
+
+        <div class="field"><label>日期：</label>
+          <input type="date" id="date" required></div>
+
+        <div class="field"><label>類別：</label>
+          <select id="category" required>
+            <option value="">請選擇</option>
+            <option value="諮詢費">諮詢費</option>
+            <option value="印刷費">印刷費</option>
+            <option value="資料蒐集費">資料蒐集費</option>
+            <option value="膳宿費">膳宿費</option>
+            <option value="教材教具費">教材教具費</option>
+            <option value="交通費">交通費</option>
+            <option value="雜支">雜支</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+
+        <div class="field"><label>子分類：</label>
+          <input type="text" id="subCategory"></div>
+
+        <div class="field"><label>帳戶：</label>
+          <input type="text" id="account" value="現金"></div>
+
+        <div class="field"><label>備註：</label>
+          <textarea id="note"></textarea></div>
+
+        <div class="field"><label>發票號碼：</label>
+          <input type="text" id="invoice"></div>
+
+        <div class="field"><label>專案：</label>
+          <select id="project">
+            <option value="114學年度國際教育補助計畫-學校國際化">
+              114學年度國際教育補助計畫-學校國際化
+            </option>
+            <option value="無特別專案">無特別專案</option>
+          </select>
+        </div>
+
+        <div class="field"><label>位置：</label>
+          <input type="text" id="location"></div>
+
+        <div class="button-row">
+          <button type="submit" class="btn-primary">儲存一筆</button>
+          <button type="button" class="btn-secondary" id="clearAllBtn">清除全部資料</button>
+        </div>
+
+      </form>
+
+      <h2>支出明細</h2>
+      <div id="tableContainer"></div>
+      <div class="empty-hint" id="emptyHint">目前尚未輸入任何支出。</div>
+
+      <button type="button" class="btn-export" id="exportBtn">下載 Excel 結算表</button>
+    </div>
+  </div>
+
+  <script>
+    const budgetByCategory = {
+      "諮詢費": 2500,
+      "印刷費": 89000,
+      "資料蒐集費": 25142,
+      "膳宿費": 6800,
+      "教材教具費": 60000,
+      "交通費": 17160,
+      "雜支": 0,
+      "其他": 0
+    };
+
+    let expenses = [];
+    const stored = localStorage.getItem("intl_budget_expenses");
+    if (stored) {
+      try { expenses = JSON.parse(stored); } catch (e) { expenses = []; }
+    }
+
+    const form = document.getElementById("expenseForm");
+    const tableContainer = document.getElementById("tableContainer");
+    const emptyHint = document.getElementById("emptyHint");
+    const clearAllBtn = document.getElementById("clearAllBtn");
+    const exportBtn = document.getElementById("exportBtn");
+
+    document.getElementById("date").value =
+      new Date().toISOString().slice(0, 10);
+
+    function renderTable() {
+      if (!expenses.length) {
+        tableContainer.innerHTML = "";
+        emptyHint.style.display = "block";
+        return;
+      }
+      emptyHint.style.display = "none";
+
+      let html = '<table><thead><tr>' +
+        '<th>日期</th>' +
+        '<th>類別</th>' +
+        '<th>子分類</th>' +
+        '<th>金額</th>' +
+        '<th>發票</th>' +
+        '<th>帳戶</th>' +
+        '<th>備註</th>' +
+        '</tr></thead><tbody>';
+
+      expenses.forEach(item => {
+        html += `<tr>
+          <td>${item.date}</td>
+          <td>${item.category}</td>
+          <td>${item.subCategory || ""}</td>
+          <td class="text-right">${item.amount.toLocaleString()}</td>
+          <td>${item.invoice || ""}</td>
+          <td>${item.account || ""}</td>
+          <td>${item.note || ""}</td>
+        </tr>`;
+      });
+
+      html += "</tbody></table>";
+      tableContainer.innerHTML = html;
+    }
+
+    function saveToStorage() {
+      localStorage.setItem("intl_budget_expenses", JSON.stringify(expenses));
+    }
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const amount = Number(document.getElementById("amount").value || 0);
+      const date = document.getElementById("date").value;
+      const category = document.getElementById("category").value;
+      const subCategory = document.getElementById("subCategory").value.trim();
+      const account = document.getElementById("account").value.trim();
+      const note = document.getElementById("note").value.trim();
+      const invoice = document.getElementById("invoice").value.trim();
+      const project = document.getElementById("project").value;
+      const location = document.getElementById("location").value.trim();
+
+      if (!amount || !date || !category) {
+        alert("請至少填寫 金額、日期、類別。");
+        return;
+      }
+
+      expenses.push({
+        amount, date, category, subCategory,
+        account, note, invoice, project, location
+      });
+
+      saveToStorage();
+      renderTable();
+      form.reset();
+      document.getElementById("date").value =
+        new Date().toISOString().slice(0, 10);
+    });
+
+    clearAllBtn.addEventListener("click", function () {
+      if (confirm("確定要刪除目前所有已儲存的支出資料嗎？")) {
+        expenses = [];
+        saveToStorage();
+        renderTable();
+      }
+    });
+
+    exportBtn.addEventListener("click", function () {
+      if (!expenses.length) {
+        alert("目前沒有資料可以匯出。");
+        return;
+      }
+
+      const detailData = [
+        ["日期", "類別", "子分類", "金額", "帳戶", "發票號碼", "備註", "專案", "位置"]
+      ];
+      expenses.forEach(item => {
+        detailData.push([
+          item.date,
+          item.category,
+          item.subCategory || "",
+          item.amount,
+          item.account || "",
+          item.invoice || "",
+          item.note || "",
+          item.project || "",
+          item.location || ""
+        ]);
+      });
+
+      const detailSheet = XLSX.utils.aoa_to_sheet(detailData);
+
+      const actualByCat = {};
+      expenses.forEach(item => {
+        if (!actualByCat[item.category]) actualByCat[item.category] = 0;
+        actualByCat[item.category] += Number(item.amount) || 0;
+      });
+
+      const categories = Object.keys(budgetByCategory);
+      const summaryData = [["項次", "項目", "預算金額", "複價(實)", "差額"]];
+      let idx = 1;
+
+      categories.forEach(cat => {
+        const budget = budgetByCategory[cat] || 0;
+        const actual = actualByCat[cat] || 0;
+        const diff = budget - actual;
+        summaryData.push([idx++, cat, budget, actual, diff]);
+      });
+
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, detailSheet, "明細");
+      XLSX.utils.book_append_sheet(wb, summarySheet, "結算表");
+
+      XLSX.writeFile(wb, "國際教育結算表.xlsx");
+    });
+
+    renderTable();
+  </script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("./sw.js");
+      });
+    }
+  </script>
+</body>
+</html>
